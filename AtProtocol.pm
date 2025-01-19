@@ -11,6 +11,8 @@ use JSON;
 use Fcntl ':flock'; # Import LOCK_* constants
 
 use constant {
+	##UserAgent
+	USERAGENT	=> 'AtProtocol',
 	##at protocol
 	PDS_URI_A	=> 'https://bsky.social',
 	##token_file_name
@@ -29,7 +31,8 @@ sub new {
 	my $password	= shift;
 	my $directory	= shift;
 	my $option		= shift;
-	my $requestUri = $option ? ($option->{pdsUri} ? $option->{pdsUri} : PDS_URI_A) : PDS_URI_A;
+	my $requestUri	= $option ? ($option->{pdsUri}		? $option->{pdsUri}		: PDS_URI_A) : PDS_URI_A;
+	my $userAgent	= $option ? ($option->{userAgent}	? $option->{userAgent}	: USERAGENT) : USERAGENT;
 	my $err = '';
 	if($identifier && $password && $directory){
 		my $self = {requestUri => $requestUri, identifier => $identifier, password => $password, directory => $directory};
@@ -61,8 +64,7 @@ sub createSession {
 			$jsont)
 		or die("Failed to initialize HTTP::Request(com.atproto.server.createSession): $!");
 		my $ua = LWP::UserAgent->new		or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent("Sarudokonetsystem");
-#		$ua->ssl_opts( SSL_ca_file => Mozilla::CA::SSL_ca_file());
+		$ua->agent(USERAGENT);
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -95,7 +97,7 @@ sub refreshSession {
 			['Authorization' => 'Bearer '.$refreshJwt, 'Accept' => 'application/json'])
 		or die("Failed to initialize HTTP::Request(com.atproto.server.refreshSession:$refreshJwt)");
 		my $ua = LWP::UserAgent->new	or die('Failed to initialize LWP::UserAgent');
-		$ua->agent("Sarudokonetsystem");
+		$ua->agent(USERAGENT);
 		my $res = $ua->request ($req)		or die 'Failed to request(refreshSession)';
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -128,7 +130,7 @@ sub deleteSession {
 			['Authorization' => 'Bearer '.$refreshJwt, 'Accept' => 'application/json'])
 		or die("Failed to initialize HTTP::Request(com.atproto.server.deleteSession:$refreshJwt): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent("Sarudokonetsystem");
+		$ua->agent(USERAGENT);
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -150,13 +152,50 @@ sub deleteSession {
 	return $ret;
 }
 
+# com.atproto.server.getSession
+sub getSession {
+	my $self	= shift;
+	my $option	= shift;
+	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	#print $refreshJwt."\n";
+	my $ret			= undef;
+	eval{
+		my $req = HTTP::Request->new ('GET', 
+		$self->{requestUri}.'/xrpc/com.atproto.server.getSession', 
+		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json'])
+		or die("Failed to initialize HTTP::Request(com.atproto.server.getSession:$accessJwt): $!");
+		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
+		$ua->agent(USERAGENT);
+		my $res = $ua->request ($req)		or die("Failed to request: $!");
+		my $sl	= $res->status_line;
+		if($sl !~ /ok|Bad Request|Unauthorized/i){
+			die("Status is $sl.");
+		}
+		my $session 		= decode_json($res->decoded_content);
+		$session->{error}	&& die("Err $session->{error} getSession1: $session->{message}");
+		$ret = $session;
+	};
+	if($@){
+		chomp($@);
+		$self->{err} = $@;
+		$ret = undef;
+	}
+	return $ret;
+}
+
 sub makeQuery {
 	my $self	= shift;
 	my $ref_p	= shift;
 	my $ret		= '';
 	if(ref($ref_p) =~ /hash/i){
 		foreach my $key (keys(%$ref_p)) {
-			$ret	.= "$key=$ref_p->{$key}&";
+			if(ref($ref_p->{$key}) =~ /array/i){
+				foreach my $value (@{$ref_p->{$key}}){
+					$ret	.= "$key=$value&";
+				}
+			}else{
+				$ret	.= "$key=$ref_p->{$key}&";
+			}
 		}
 	}else{
 		$self->{err} = 'makeQuery need hash refference'
@@ -173,7 +212,7 @@ sub getAccessToken {
 	eval{
 		local $SIG{ALRM} = sub { die "timeout"; };							# set time out
 		alarm(5);
-		open $flock, '>', $self->{directory}.FLOCK_FILE.$self->{identifier}.'.txt' or die('Cannot open '.$self->{directory}.FLOCK_FILE.$self->{identifier}.".txt: $!");
+		open($flock, '>', $self->{directory}.FLOCK_FILE.$self->{identifier}.'.txt') or die('Cannot open '.$self->{directory}.FLOCK_FILE.$self->{identifier}.".txt: $!");
 		$self->{'flock'} = $flock;
 		flock($flock, LOCK_EX) or die('Cannot lock '.FLOCK_FILE.": $!");
 		alarm(0);															# unset  time out
@@ -229,6 +268,7 @@ sub getAccessToken {
 		$ret = 1;
 	};
 	if($@){
+		alarm(0);	# unset  time out
 		chomp $@;
 		$self->{err} = $@;
 		releaseAccessToken();
@@ -248,8 +288,8 @@ sub releaseAccessToken {
 		my $flock = $self->{'flock'};
 		if($flock){
 			print $flock 'ReleaseAccessToken:'.time();
-			flock($flock, LOCK_UN) or die "Cannot unlock flock: $!";	
-			close $flock or die "Cannot close flock: $!";				
+			close $flock or die "Cannot close flock: $!";
+			#flock($flock, LOCK_UN) or die "Cannot unlock flock: $!";
 			$self->{'flock'} = undef;
 		}
 		$ret = 1;

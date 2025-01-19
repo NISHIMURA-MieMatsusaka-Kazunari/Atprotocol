@@ -10,6 +10,8 @@ use HTTP::Request;
 use JSON;
 
 use constant {
+	##UserAgent
+	USERAGENT	=> 'AtProtocol::Repo',
 	##at protocol
 	PDS_URI_A	=> 'https://bsky.social',
 	POST		=> 'app.bsky.feed.post',
@@ -26,7 +28,8 @@ sub new {
 	my $option		= shift;
 	my $postType		= $option ? ($option->{postType}	? $option->{postType}	: POST)		: POST;
 	my $embedType		= $option ? ($option->{embedType}	? $option->{embedType}	: EMBED)	: EMBED;
-	$option->{pdsUri}	= $option ? ($option->{pdsUri}		? $option->{pdsUri}		: PDS_URI_A) :	PDS_URI_A;
+	$option->{userAgent}	= $option ? ($option->{userAgent}	? $option->{userAgent}	: USERAGENT)	: USERAGENT;
+	$option->{pdsUri}		= $option ? ($option->{pdsUri}		? $option->{pdsUri}		: PDS_URI_A)	: PDS_URI_A;
 	my $self;
 	eval{
 		if($identifier && $password && $directory){
@@ -69,7 +72,7 @@ sub createRecord {
 		$collection	= $2;
 		$rkey 		= $3;
 	}
-	my $ret			= undef;	
+	my $ret			= undef;
 	eval{
 		my %param = (
 			repo => $did, 
@@ -87,7 +90,7 @@ sub createRecord {
 			$jsont)
 			or die("Failed to initialize HTTP::Request(com.atproto.repo.createRecord): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent("Sarudokonetsystem");
+		$ua->agent($self->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -143,7 +146,7 @@ sub deleteRecord {
 		)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.deleteRecord): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent("Sarudokonetsystem");
+		$ua->agent($self->{userAgent});
 		my $res = $ua->request($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -202,7 +205,7 @@ sub putRecord {
 		)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.putRecord): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent("Sarudokonetsystem");
+		$ua->agent($self->{userAgent});
 		my $res = $ua->request($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -253,7 +256,7 @@ sub getRecord {
 		)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.getRecord?$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent("Sarudokonetsystem");
+		$ua->agent($self->{userAgent});
 		my $res = $ua->request($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -297,7 +300,7 @@ sub listRecords {
 		)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.listRecords?$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent("Sarudokonetsystem");
+		$ua->agent($self->{userAgent});
 		my $res = $ua->request($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -332,7 +335,7 @@ sub uploadBlob {
 		$pict)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.uploadBlob): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent("Sarudokonetsystem");
+		$ua->agent($self->{userAgent});
 		my $res = $ua->request($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -364,7 +367,7 @@ sub resolveHandle {
 		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json'])
 		or die("Failed to initialize HTTP::Request(com.atproto.identity.resolveHandle?handle=$handle): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent("Sarudokonetsystem");
+		$ua->agent($self->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -497,7 +500,7 @@ sub getOpenGraphProtocol {
 		}
 		my $req		= HTTP::Request->new ('GET', $uri)	or die("Failed to initialize HTTP::Request: $uri err: $!");
 		my $ua		= LWP::UserAgent->new				or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent("Sarudokonetsystem");
+		$ua->agent($self->{userAgent});
 		my $res		= $ua->request ($req)				or die("Failed to request: $!");
 		my $sl = $res->status_line;
 		unless($sl =~ /ok/i){
