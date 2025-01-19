@@ -183,25 +183,38 @@ sub getSession {
 	return $ret;
 }
 
-sub makeQuery {
+# com.atproto.identity.resolveHandle
+sub resolveHandle {
 	my $self	= shift;
-	my $ref_p	= shift;
-	my $ret		= '';
-	if(ref($ref_p) =~ /hash/i){
-		foreach my $key (keys(%$ref_p)) {
-			if(ref($ref_p->{$key}) =~ /array/i){
-				foreach my $value (@{$ref_p->{$key}}){
-					$ret	.= "$key=$value&";
-				}
-			}else{
-				$ret	.= "$key=$ref_p->{$key}&";
-			}
+	my $handle	= shift;
+	my $option	= shift;
+	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	):  $self->{accessJwt};
+	my $ret			= undef;
+	eval{
+		my $jsont		= "{\"handle\": \"$handle\"}";
+		my $req = HTTP::Request->new ('GET', 
+		$self->{requestUri}.'/xrpc/com.atproto.identity.resolveHandle?handle='.$handle, 
+		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json'])
+		or die("Failed to initialize HTTP::Request(com.atproto.identity.resolveHandle?handle=$handle): $!");
+		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
+		$ua->agent($self->{userAgent});
+		my $res = $ua->request ($req)		or die("Failed to request: $!");
+		my $sl	= $res->status_line;
+		if($sl !~ /ok|Bad Request|Unauthorized/i){
+			die("Status is $sl.");
 		}
-	}else{
-		$self->{err} = 'makeQuery need hash refference'
+		my $session 	= decode_json($res->decoded_content);
+		$self->{content} = $session;
+		$ret			= $session->{did} or die("Err $session->{error}  resolveHandle1: $session->{message}");
+	};
+	if($@){
+		chomp($@);
+		$self->{err} = $@;
+		$ret = undef;
 	}
 	return $ret;
 }
+
 ################# Perl Original (Wraper At Protocol)##################
 # multi-process multi-thread safe。
 sub getAccessToken {
@@ -319,6 +332,27 @@ sub deleteAccessToken {
 		chomp $@;
 		$self->{err} = $@;
 		$ret = undef;
+	}
+	return $ret;
+}
+
+## hash to Query for GET
+sub makeQuery {
+	my $self	= shift;
+	my $ref_p	= shift;
+	my $ret		= '';
+	if(ref($ref_p) =~ /hash/i){
+		foreach my $key (keys(%$ref_p)) {
+			if(ref($ref_p->{$key}) =~ /array/i){
+				foreach my $value (@{$ref_p->{$key}}){
+					$ret	.= "$key=$value&";
+				}
+			}else{
+				$ret	.= "$key=$ref_p->{$key}&";
+			}
+		}
+	}else{
+		$self->{err} = 'makeQuery need hash refference'
 	}
 	return $ret;
 }

@@ -353,38 +353,6 @@ sub uploadBlob {
 	return $ret;
 }
 
-# com.atproto.identity.resolveHandle
-sub resolveHandle {
-	my $self	= shift;
-	my $handle	= shift;
-	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	):  $self->{accessJwt};
-	my $ret			= undef;
-	eval{
-		my $jsont		= "{\"handle\": \"$handle\"}";
-		my $req = HTTP::Request->new ('GET', 
-		$self->{requestUri}.'/xrpc/com.atproto.identity.resolveHandle?handle='.$handle, 
-		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json'])
-		or die("Failed to initialize HTTP::Request(com.atproto.identity.resolveHandle?handle=$handle): $!");
-		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
-		my $res = $ua->request ($req)		or die("Failed to request: $!");
-		my $sl	= $res->status_line;
-		if($sl !~ /ok|Bad Request|Unauthorized/i){
-			die("Status is $sl.");
-		}
-		my $session 	= decode_json($res->decoded_content);
-		$self->{content} = $session;
-		$ret			= $session->{did} or die("Err $session->{error}  resolveHandle1: $session->{message}");
-	};
-	if($@){
-		chomp($@);
-		$self->{err} = $@;
-		$ret = undef;
-	}
-	return $ret;
-}
-
 ### Utility subroutines
 # make record form message
 sub makeRecord {
