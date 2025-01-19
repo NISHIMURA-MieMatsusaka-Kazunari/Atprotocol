@@ -85,7 +85,7 @@ sub createRecord {
 		my $jsont = encode_json(\%param);
 		#print "param: $jsont\n\n";
 		my $req = HTTP::Request->new ('POST', 
-			$self->{requestUri}.'/xrpc/com.atproto.repo.createRecord', 
+			$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.createRecord', 
 			['Authorization' => 'Bearer '.$self->{accessJwt}, 'Content-Type' => 'application/json', 'Accept' => 'application/json'], 
 			$jsont)
 			or die("Failed to initialize HTTP::Request(com.atproto.repo.createRecord): $!");
@@ -140,7 +140,7 @@ sub deleteRecord {
 		my $jsont = encode_json(\%param);
 		#print "Json: $jsont\n";
 		my $req = HTTP::Request->new ('POST', 
-		$self->{requestUri}.'/xrpc/com.atproto.repo.deleteRecord', 
+		$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.deleteRecord', 
 		['Authorization' => 'Bearer '.$accessJwt, 'Content-Type' => 'application/json', 'Accept' => 'application/json'],
 		$jsont
 		)
@@ -199,7 +199,7 @@ sub putRecord {
 		my $jsont = encode_json(\%param);
 		#print "Json: $jsont\n";
 		my $req = HTTP::Request->new ('POST', 
-		$self->{requestUri}.'/xrpc/com.atproto.repo.putRecord', 
+		$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.putRecord', 
 		['Authorization' => 'Bearer '.$accessJwt, 'Content-Type' => 'application/json', 'Accept' => 'application/json'],
 		$jsont
 		)
@@ -251,7 +251,7 @@ sub getRecord {
 		my $query = $self->makeQuery(\%param);
 		#print "Query: $query\n";
 		my $req = HTTP::Request->new ('GET', 
-		$self->{requestUri}.'/xrpc/com.atproto.repo.getRecord?'.$query, 
+		$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.getRecord?'.$query, 
 		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json'],
 		)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.getRecord?$query): $!");
@@ -295,7 +295,7 @@ sub listRecords {
 		defined($rev)	&& ($param{'reverse'}	= $rev ? 'true' : 'false');
 		my $query = $self->makeQuery(\%param);
 		my $req = HTTP::Request->new ('GET', 
-		$self->{requestUri}.'/xrpc/com.atproto.repo.listRecords?'.$query, 
+		$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.listRecords?'.$query, 
 		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json'],
 		)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.listRecords?$query): $!");
@@ -330,7 +330,7 @@ sub uploadBlob {
 		#print "content-type: $temp\n";
 		my $contentType	= $option ? ($option->{contentType}	? $option->{contentType}	: $temp				):  $temp or die('cannot set contentType');
 		my $req = HTTP::Request->new ('POST', 
-		$self->{requestUri}.'/xrpc/com.atproto.repo.uploadBlob', 
+		$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.uploadBlob', 
 		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json', 'Content-Type' => $contentType],
 		$pict)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.uploadBlob): $!");

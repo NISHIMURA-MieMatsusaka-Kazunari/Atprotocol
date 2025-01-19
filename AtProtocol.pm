@@ -35,7 +35,7 @@ sub new {
 	my $userAgent	= $option ? ($option->{userAgent}	? $option->{userAgent}	: USERAGENT) : USERAGENT;
 	my $err = '';
 	if($identifier && $password && $directory){
-		my $self = {requestUri => $requestUri, identifier => $identifier, password => $password, directory => $directory};
+		my $self = {requestUri => $requestUri, identifier => $identifier, password => $password, directory => $directory, serviceEndpoint => $requestUri};
 		return bless $self, $class;
 	}else{
 		@! = "Err not set Identifier or Password or directory.";
@@ -174,6 +174,18 @@ sub getSession {
 		my $session 		= decode_json($res->decoded_content);
 		$session->{error}	&& die("Err $session->{error} getSession1: $session->{message}");
 		$ret = $session;
+		## set serviceEndpoint
+		$self->{serviceEndpoint} = $self->{requestUri};
+		my @services = ();
+		if(ref($ret->{didDoc}{service}) =~ /ARRAY/i){
+			@services = @{$ret->{didDoc}{service}};
+		}
+		foreach my $service (@services){
+			if($service->{type} =~ /AtprotoPersonalDataServer/i){
+				$self->{serviceEndpoint} = $service->{serviceEndpoint};
+				last;
+			}
+		}
 	};
 	if($@){
 		chomp($@);

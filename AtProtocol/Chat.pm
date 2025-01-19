@@ -57,25 +57,16 @@ sub DESTROY {
 	my $self = shift;
 	$self->SUPER::DESTROY();
 }
-##  inheritance API getSession 
-sub getSession {
+##  override
+# getAccessToken
+sub getAccessToken {
 	my $self = shift;
+	my $handle	= shift;
 	my $option	= shift;
 	my $ret			= undef;
 	eval{
-		$ret = $self->SUPER::getSession($option) or die($self->{err});
-		## set serviceEndpoint
-		$self->{serviceEndpoint} = $self->{requestUri};
-		my @services = ();
-		if(ref($ret->{didDoc}{service}) =~ /ARRAY/i){
-			@services = @{$ret->{didDoc}{service}};
-		}
-		foreach my $service (@services){
-			if($service->{type} =~ /AtprotoPersonalDataServer/i){
-				$self->{serviceEndpoint} = $service->{serviceEndpoint};
-				last;
-			}
-		}
+		$ret = $self->SUPER::getAccessToken($handle, $option)	or die($self->{err});
+		$self->getSession()										or die($self->{err});
 	};
 	if($@){
 		chomp($@);
@@ -84,6 +75,7 @@ sub getSession {
 	}
 	return $ret;
 }
+
 ###  API app.bsky.actor
 # app.bsky.actor.getProfile
 sub actor_getProfile {
