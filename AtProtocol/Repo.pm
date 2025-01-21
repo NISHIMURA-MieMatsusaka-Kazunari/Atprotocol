@@ -28,6 +28,7 @@ sub new {
 	my $option		= shift;
 	my $postType		= $option ? ($option->{postType}	? $option->{postType}	: POST)		: POST;
 	my $embedType		= $option ? ($option->{embedType}	? $option->{embedType}	: EMBED)	: EMBED;
+	my $langs			= $option ? ($option->{langs}		? $option->{langs}		: [LANG])	: [LANG];
 	$option->{userAgent}	= $option ? ($option->{userAgent}	? $option->{userAgent}	: USERAGENT)	: USERAGENT;
 	$option->{pdsUri}		= $option ? ($option->{pdsUri}		? $option->{pdsUri}		: PDS_URI_A)	: PDS_URI_A;
 	my $self;
@@ -36,6 +37,7 @@ sub new {
 			$self = AtProtocol->new($identifier, $password, $directory, $option) or die($!);
 			$self->{postType}	= $postType;
 			$self->{embedType}	= $embedType;
+			$self->{langs}		= $langs;
 		}else{
 			die("Err not set Identifier and Password.");
 		}
@@ -360,7 +362,7 @@ sub makeRecord {
 	my $msg		= shift;
 	my $option	= shift;
 	my $collection	= $option ? ($option->{postType}	? $option->{postType}	: $self->{postType}	): $self->{postType};
-	my $langs		= $option ? ($option->{langs}		? $option->{langs}		: [LANG]			): [LANG];
+	my $langs		= $option ? ($option->{langs}		? $option->{langs}		: $self->{langs}		): $self->{langs};
 	#my ($sec,$min,$hour,$mday,$mon,$year,$wday,$stime) = localtime(time());
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$stime) = gmtime(time());
 	my $date = sprintf("%04d-%02d-%02dT%02d:%02d:%02d+00:00", $year+1900,$mon+1,$mday,$hour,$min,$sec);

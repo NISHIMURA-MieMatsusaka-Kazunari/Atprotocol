@@ -17,7 +17,7 @@ use constant {
 	#PDS_URI_A	=> 'https://scarletina.us-east.host.bsky.network',
 	ACCEPT_LABELERS	=> 'did:plc:ar7c4by46qjdydhdevvrndac;redact',
 	CHAT_PROXY	=> 'did:web:api.bsky.chat#bsky_chat',
-	POST		=> 'app.bsky.feed.post',
+	CHAT_TYPE	=> 'chat.bsky.convo.defs#messageView',
 	EMBED		=> 'app.bsky.embed.external',
 	LANG		=> 'jp-JP',
 };
@@ -29,17 +29,17 @@ sub new {
 	my $password	= shift;
 	my $directory	= shift;
 	my $option		= shift;
-	my $postType				= $option ? ($option->{postType}			? $option->{postType}		: POST)					: POST;
-	my $embedType				= $option ? ($option->{embedType}			? $option->{embedType}		: EMBED)				: EMBED;
+	my $chatType				= $option ? ($option->{chatType}			? $option->{chatType}		: CHAT_TYPE)			: CHAT_TYPE;
+	my $acceptLabelers 			= $option ? ($option->{acceptLabelers}		? $option->{acceptLabelers}	: ACCEPT_LABELERS)		: ACCEPT_LABELERS;
+	$option->{langs}			= $option ? ($option->{langs}				? $option->{langs}			: [LANG])				: [LANG];
 	$option->{userAgent}		= $option ? ($option->{userAgent}			? $option->{userAgent}		: USERAGENT)			: USERAGENT;
 	$option->{pdsUri}			= $option ? ($option->{pdsUri}				? $option->{pdsUri}			: PDS_URI_A) 			: PDS_URI_A;
-	$option->{acceptLabelers}	= $option ? ($option->{acceptLabelers}		? $option->{acceptLabelers}	: ACCEPT_LABELERS)		: ACCEPT_LABELERS;
 	my $self;
 	eval{
 		if($identifier && $password && $directory){
 			$self = AtProtocol::Repo->new($identifier, $password, $directory, $option) or die($!);
-			$self->{postType}	= $postType;
-			$self->{embedType}	= $embedType;
+			$self->{chatType}		= $chatType;
+			$self->{acceptLabelers}	= $acceptLabelers;
 		}else{
 			die("Err not set Identifier and Password.");
 		}
@@ -93,7 +93,7 @@ sub actor_getProfile {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
@@ -136,7 +136,7 @@ sub actor_getProfiles {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
@@ -185,7 +185,7 @@ sub convo_deleteMessageForSelf {
 			[
 				'Authorization' => 'Bearer '.$self->{accessJwt}, 
 				'atproto-proxy' => CHAT_PROXY,
-				'atproto-accept-labelers' => $option->{acceptLabelers},
+				'atproto-accept-labelers' => $self->{acceptLabelers},
 				'Accept' => 'application/json'
 			],
 			$jsont
@@ -229,7 +229,7 @@ sub convo_getConvoForMembers {
 			[
 				'Authorization' => 'Bearer '.$self->{accessJwt}, 
 				'atproto-proxy' => CHAT_PROXY,
-				'atproto-accept-labelers' => $option->{acceptLabelers},
+				'atproto-accept-labelers' => $self->{acceptLabelers},
 				'Accept' => 'application/json'
 			]
 		)
@@ -272,7 +272,7 @@ sub convo_getConvo {
 			[
 				'Authorization' => 'Bearer '.$self->{accessJwt}, 
 				'atproto-proxy' => CHAT_PROXY,
-				'atproto-accept-labelers' => $option->{acceptLabelers},
+				'atproto-accept-labelers' => $self->{acceptLabelers},
 				'Accept' => 'application/json'
 			]
 		)
@@ -316,7 +316,7 @@ sub convo_getLog {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
@@ -363,7 +363,7 @@ sub convo_getMessages {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
@@ -406,7 +406,7 @@ sub convo_leaveConvo {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
@@ -452,7 +452,7 @@ sub convo_listConvos {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
@@ -495,7 +495,7 @@ sub convo_muteConvo {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		],
 		$jsont
@@ -539,7 +539,7 @@ sub convo_unmuteConvo {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		],
 		$jsont
@@ -583,7 +583,7 @@ sub convo_sendMessageBatch {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		],
 		$jsont
@@ -627,7 +627,7 @@ sub convo_sendMessage {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		],
 		$jsont
@@ -673,7 +673,7 @@ sub convo_updateRead {
 		[
 		'Authorization' => 'Bearer '.$self->{accessJwt}, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $option->{acceptLabelers},
+		'atproto-accept-labelers' => $self->{acceptLabelers},
 		'Accept' => 'application/json'
 		],
 		$jsont
@@ -701,5 +701,40 @@ sub convo_updateRead {
 	}
 	return $ret;
 }
+
+
+# send message by chat
+# exclusive control. multi-process safe
+# return hash(createRecord)
+sub sendMessage {
+	my $self		= shift;
+	my $handleName	= shift;
+	my $msg 		= shift;
+	my $option		= shift;
+	my $createAt	= $option ? ($option->{createAt}	? $option->{createAt}	: undef	): undef;
+	my $collection	= $option ? ($option->{chatType}	? $option->{chatType}	: $self->{chatType}	): $self->{chatType};
+	my $ret		= undef;
+	eval{
+		$self->getAccessToken()												or die("Err getAccessToken: $self->{err}");#start exclusive control
+		my $profile = $self->actor_getProfile($handleName)					or die("Err getProfile: $self->{err}");
+		my $convo	= $self->convo_getConvoForMembers([$profile->{did}])	or die("Err getConvoForMembers: $self->{err}");
+		
+		my $option = {collection => $collection};
+		$createAt or ($option->{createAt} = $createAt);
+		my $record = $self->makeRecord($msg, $option)						or die("Err makeRecord: $self->{err}");
+		#my $jsont = encode_json($record);
+		#print "Record:\n$jsont\n\n";
+		$ret = $self->convo_sendMessage($convo->{convo}{id}, $record)		or die("Err sendMesssage: $self->{err}");
+		$self->releaseAccessToken()											or die("Err releaseAccessToken: $self->{err}");#finish exclusive control
+	};
+	if($@){
+		chomp $@;
+		$self->{err} = $@;
+		$self->releaseAccessToken();
+		$ret = undef;
+	}
+	return $ret;
+}
+
 
 return 1;
