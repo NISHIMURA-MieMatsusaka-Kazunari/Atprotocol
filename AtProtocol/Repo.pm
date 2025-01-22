@@ -361,8 +361,9 @@ sub makeRecord {
 	my $self	= shift;
 	my $msg		= shift;
 	my $option	= shift;
-	my $collection	= $option ? ($option->{postType}	? $option->{postType}	: $self->{postType}	): $self->{postType};
+	my $collection	= $option ? ($option->{postType}	? $option->{postType}	: $self->{postType}		): $self->{postType};
 	my $langs		= $option ? ($option->{langs}		? $option->{langs}		: $self->{langs}		): $self->{langs};
+	my $invalidOgp	= $option ? ($option->{invalidOgp}	? $option->{invalidOgp}	: $self->{invalidOgp}	): undef;
 	#my ($sec,$min,$hour,$mday,$mon,$year,$wday,$stime) = localtime(time());
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$stime) = gmtime(time());
 	my $date = sprintf("%04d-%02d-%02dT%02d:%02d:%02d+00:00", $year+1900,$mon+1,$mday,$hour,$min,$sec);
@@ -375,7 +376,7 @@ sub makeRecord {
 			createdAt => $createAt, 
 			langs => $langs,
 		);
-		my ($facets, $embed) = $self->makeFacetsEmbed($msg);
+		my ($facets, $embed) = $self->makeFacetsEmbed($msg,{invalidOgp => $invalidOgp});
 		if($facets && ref($facets) =~ /array/i && scalar(@$facets)){
 			$record{facets} = $facets;
 		}
@@ -398,10 +399,11 @@ sub makeFacetsEmbed {
 	my $msg = shift;
 	my $option	= shift;
 	my $collection	= $option ? ($option->{embedType}	? $option->{embedType}	: $self->{embedType}	): $self->{embedType};
+	my $invalidOgp	= $option ? ($option->{invalidOgp}	? $option->{invalidOgp}	: $self->{invalidOgp}	): undef;
 	my @facets = ();
 	my %embed = ();
 	#url
-	my $f_ogp = 1;
+	my $f_ogp = $invalidOgp ? undef:1;
 	while($msg =~ /((https|http):\/\/[\-a-z0-9@:%\._+~#=]{1,256}\.[a-z0-9]{1,6}(\/[\-a-z0-9@:%\._+~#=\/]{1,256})*(\?[\S]+)*)/gi){
 		my $uri = $1;
 		push(@facets, {
