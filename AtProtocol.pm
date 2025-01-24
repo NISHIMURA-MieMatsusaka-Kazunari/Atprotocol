@@ -236,8 +236,9 @@ sub getAccessToken {
 	my $fh		= undef;
 	eval{
 		local $SIG{ALRM} = sub { die "timeout"; };							# set time out
-		alarm(5);
-		open($flock, '>', $self->{directory}.FLOCK_FILE.$self->{identifier}.'.txt') or die('Cannot open '.$self->{directory}.FLOCK_FILE.$self->{identifier}.".txt: $!");
+		alarm(60);
+		open($flock, '+<', $self->{directory}.FLOCK_FILE.$self->{identifier}.'.txt') or die('Cannot open '.$self->{directory}.FLOCK_FILE.$self->{identifier}.".txt: $!");
+		my $old = select($flock); $| = 1; select($old);						# no buffering
 		$self->{'flock'} = $flock;
 		flock($flock, LOCK_EX) or die('Cannot lock '.FLOCK_FILE.": $!");
 		alarm(0);															# unset  time out
@@ -312,6 +313,8 @@ sub releaseAccessToken {
 	eval{
 		my $flock = $self->{'flock'};
 		if($flock){
+			truncate($flock, 0);
+			seek($flock, 0, 0);
 			print $flock 'ReleaseAccessToken:'.time();
 			close $flock or die "Cannot close flock: $!";
 			#flock($flock, LOCK_UN) or die "Cannot unlock flock: $!";
