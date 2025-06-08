@@ -21,16 +21,16 @@ use constant {
 
 # constructor
 sub new {
-	my $class		= shift;
+	my $atProto		= shift;
 	my $identifier 	= shift;
 	my $password	= shift;
 	my $directory	= shift;
 	my $option		= shift;
-	my $postType		= $option ? ($option->{postType}	? $option->{postType}	: POST)		: POST;
-	my $embedType		= $option ? ($option->{embedType}	? $option->{embedType}	: EMBED)	: EMBED;
-	my $langs			= $option ? ($option->{langs}		? $option->{langs}		: [LANG])	: [LANG];
-	$option->{userAgent}	= $option ? ($option->{userAgent}	? $option->{userAgent}	: USERAGENT)	: USERAGENT;
-	$option->{pdsUri}		= $option ? ($option->{pdsUri}		? $option->{pdsUri}		: PDS_URI_A)	: PDS_URI_A;
+	my $postType			= defined($option->{postType})	? $option->{postType}	: POST;
+	my $embedType			= defined($option->{embedType})	? $option->{embedType}	: EMBED;
+	my $langs				= defined($option->{langs})		? $option->{langs}		: [LANG];
+	$option->{userAgent}	= defined($option->{userAgent})	? $option->{userAgent}	: USERAGENT;
+	$option->{pdsUri}		= defined($option->{pdsUri})	? $option->{pdsUri}		: PDS_URI_A;
 	my $self;
 	eval{
 		if($identifier && $password && $directory){
@@ -47,28 +47,28 @@ sub new {
 		$! = $@;
 		return undef;
 	}else{
-		return bless $self, $class;
+		return bless $self, $atProto;
 	}
 }
 # destructor
 sub DESTROY {
-	my $self = shift;
-	$self->SUPER::DESTROY();
+	my $atProto = shift;
+	$atProto->SUPER::DESTROY();
 }
 
 ###  API atproto.repo
 # com.atproto.repo.createRecord
 sub createRecord {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $record	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
-	my $uri			= $option ? ($option->{uri}			? $option->{uri}		: undef					): undef;
-	my $did			= $option ? ($option->{did}			? $option->{did}		: $self->{did}			): $self->{did};
-	my $collection	= $option ? ($option->{postType}	? $option->{postType}	: $self->{postType}		): $self->{postType};
-	my $rkey		= $option ? ($option->{rkey}		? $option->{rkey}		: undef					): undef;
-	my $validate	= $option ? ($option->{validate}	? $option->{validate}	: undef					): undef;
-	my $swapCommit	= $option ? ($option->{swapCommit}	? $option->{swapCommit}	: undef					): undef;
+	my $accessJwt	= defined($option->{accessJwt})		? $option->{accessJwt}	: $atProto->{accessJwt};
+	my $uri			= defined($option->{uri})			? $option->{uri}		: undef;
+	my $did			= defined($option->{did})			? $option->{did}		: $atProto->{did};
+	my $collection	= defined($option->{postType})		? $option->{postType}	: $atProto->{postType};
+	my $rkey		= defined($option->{rkey})			? $option->{rkey}		: undef;
+	my $validate	= defined($option->{validate})		? $option->{validate}	: undef;
+	my $swapCommit	= defined($option->{swapCommit})	? $option->{swapCommit}	: undef;
 	if($uri && ($uri =~ /^at:\/\/([^\/]+)\/([^\/]+)\/([^\/]+)$/i)){
 		$did		= $1;
 		$collection	= $2;
@@ -87,19 +87,19 @@ sub createRecord {
 		my $jsont = encode_json(\%param);
 		#print "param: $jsont\n\n";
 		my $req = HTTP::Request->new ('POST', 
-			$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.createRecord', 
-			['Authorization' => 'Bearer '.$self->{accessJwt}, 'Content-Type' => 'application/json', 'Accept' => 'application/json'], 
+			$atProto->{serviceEndpoint}.'/xrpc/com.atproto.repo.createRecord', 
+			['Authorization' => 'Bearer '.$atProto->{accessJwt}, 'Content-Type' => 'application/json', 'Accept' => 'application/json'], 
 			$jsont)
 			or die("Failed to initialize HTTP::Request(com.atproto.repo.createRecord): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error}  createRecord: $session->{message}");
 		}
@@ -107,19 +107,19 @@ sub createRecord {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # com.atproto.repo.deleteRecord
 sub deleteRecord {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $uri		= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
-	my $swapRecord	= $option ? ($option->{swapRecord}	? $option->{swapRecord}	: undef					): undef;
-	my $swapCommit	= $option ? ($option->{swapCommit}	? $option->{swapCommit}	: undef					): undef;
+	my $accessJwt	= defined($option->{accessJwt})		? $option->{accessJwt}	: $atProto->{accessJwt};
+	my $swapRecord	= defined($option->{swapRecord})	? $option->{swapRecord}	: undef;
+	my $swapCommit	= defined($option->{swapCommit})	? $option->{swapCommit}	: undef;
 	my $ret			= undef;
 	eval{
 		my $did			= undef;
@@ -142,40 +142,40 @@ sub deleteRecord {
 		my $jsont = encode_json(\%param);
 		#print "Json: $jsont\n";
 		my $req = HTTP::Request->new ('POST', 
-		$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.deleteRecord', 
+		$atProto->{serviceEndpoint}.'/xrpc/com.atproto.repo.deleteRecord', 
 		['Authorization' => 'Bearer '.$accessJwt, 'Content-Type' => 'application/json', 'Accept' => 'application/json'],
 		$jsont
 		)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.deleteRecord): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
 			die("Status is $sl.");
 		}
 		my $json = decode_json($res->decoded_content);
-		$self->{content} = $json;
+		$atProto->{content} = $json;
 		$json->{commit}	or die("Err $json->{error}  resolveHandle1: $json->{message}");
 		$ret = $json;
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # com.atproto.repo.putRecord
 sub putRecord {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $uri		= shift;
 	my $record	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
-	my $validate	= $option ? ($option->{validate}	? $option->{validate}	: undef					): undef;
-	my $swapRecord	= $option ? ($option->{swapRecord}	? $option->{swapRecord}	: undef					): undef;
-	my $swapCommit	= $option ? ($option->{swapCommit}	? $option->{swapCommit}	: undef					): undef;
+	my $accessJwt	= defined($option->{accessJwt})		? $option->{accessJwt}	: $atProto->{accessJwt};
+	my $validate	= defined($option->{validate})		? $option->{validate}	: undef;
+	my $swapRecord	= defined($option->{swapRecord})	? $option->{swapRecord}	: undef;
+	my $swapCommit	= defined($option->{swapCommit})	? $option->{swapCommit}	: undef;
 	my $ret			= undef;
 	eval{
 		my $did			= undef;
@@ -201,37 +201,37 @@ sub putRecord {
 		my $jsont = encode_json(\%param);
 		#print "Json: $jsont\n";
 		my $req = HTTP::Request->new ('POST', 
-		$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.putRecord', 
+		$atProto->{serviceEndpoint}.'/xrpc/com.atproto.repo.putRecord', 
 		['Authorization' => 'Bearer '.$accessJwt, 'Content-Type' => 'application/json', 'Accept' => 'application/json'],
 		$jsont
 		)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.putRecord): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
 			die("Status is $sl.");
 		}
 		my $json = decode_json($res->decoded_content);
-		$self->{content} = $json;
+		$atProto->{content} = $json;
 		$json->{commit}	or die("Err $json->{error}  resolveHandle1: $json->{message}");
 		$ret = $json;
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # com.atproto.repo.getRecord
 sub getRecord {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $uri		= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
-	my $cid			= $option ? ($option->{cid}			? $option->{cid}		: undef					): undef;
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
+	my $cid			= defined($option->{cid})		? $option->{cid}		: undef;
 	my $ret			= undef;
 	eval{
 		my $did			= undef;
@@ -250,42 +250,42 @@ sub getRecord {
 		rkey		=> $rkey,
 		);
 		$cid	&& ($param{cid}	= $cid);
-		my $query = $self->makeQuery(\%param);
+		my $query = $atProto->makeQuery(\%param);
 		#print "Query: $query\n";
 		my $req = HTTP::Request->new ('GET', 
-		$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.getRecord?'.$query, 
+		$atProto->{serviceEndpoint}.'/xrpc/com.atproto.repo.getRecord?'.$query, 
 		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json'],
 		)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.getRecord?$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
 			die("Status is $sl.");
 		}
 		my $json = decode_json($res->decoded_content);
-		$self->{content} = $json;
+		$atProto->{content} = $json;
 		$json->{uri}	or die("Err $json->{error}  resolveHandle1: $json->{message}");
 		$ret = $json;
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # com.atproto.repo.listRecords
 sub listRecords {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
-	my $did			= $option ? ($option->{did}			? $option->{did}		: $self->{did}			): $self->{did};
-	my $collection	= $option ? ($option->{postType}	? $option->{postType}	: $self->{postType}		): $self->{postType};
-	my $limit		= $option ? ($option->{limit}		? $option->{limit}		: undef					): undef;
-	my $cursor		= $option ? ($option->{cursor}		? $option->{cursor}		: undef					): undef;
-	my $rev			= $option ? ($option->{rev}			? $option->{rev}		: undef					): undef;
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
+	my $did			= defined($option->{did})		? $option->{did}		: $atProto->{did};
+	my $collection	= defined($option->{postType})	? $option->{postType}	: $atProto->{postType};
+	my $limit		= defined($option->{limit})		? $option->{limit}		: undef;
+	my $cursor		= defined($option->{cursor})	? $option->{cursor}		: undef;
+	my $rev			= defined($option->{rev})		? $option->{rev}		: undef;
 	my $ret			= undef;
 	eval{
 		my %param = (
@@ -295,61 +295,61 @@ sub listRecords {
 		$limit			&& ($param{limit}		= $limit);
 		$cursor			&& ($param{cursor}		= $cursor);
 		defined($rev)	&& ($param{'reverse'}	= $rev ? 'true' : 'false');
-		my $query = $self->makeQuery(\%param);
+		my $query = $atProto->makeQuery(\%param);
 		my $req = HTTP::Request->new ('GET', 
-		$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.listRecords?'.$query, 
+		$atProto->{serviceEndpoint}.'/xrpc/com.atproto.repo.listRecords?'.$query, 
 		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json'],
 		)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.listRecords?$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
 			die("Status is $sl.");
 		}
 		my $json = decode_json($res->decoded_content);
-		$self->{content} = $json;
+		$atProto->{content} = $json;
 		$json->{records}	or die("Err $json->{error}  resolveHandle1: $json->{message}");
 		$ret = $json;
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # com.atproto.repo.uploadBlob
 sub uploadBlob {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $pict	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}		: $self->{accessJwt}	):  $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my $temp		= checkMagicByte($pict);
 		#print "content-type: $temp\n";
-		my $contentType	= $option ? ($option->{contentType}	? $option->{contentType}	: $temp				):  $temp or die('cannot set contentType');
+		my $contentType	= defined($option->{contentType})	? $option->{contentType}	: $temp or die('cannot set contentType');
 		my $req = HTTP::Request->new ('POST', 
-		$self->{serviceEndpoint}.'/xrpc/com.atproto.repo.uploadBlob', 
+		$atProto->{serviceEndpoint}.'/xrpc/com.atproto.repo.uploadBlob', 
 		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json', 'Content-Type' => $contentType],
 		$pict)
 		or die("Failed to initialize HTTP::Request(/xrpc/com.atproto.repo.uploadBlob): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
 			die("Status is $sl.");
 		}
 		my $json = decode_json($res->decoded_content);
-		$self->{content} = $json;
+		$atProto->{content} = $json;
 		$ret	= $json->{blob} or die("Err $json->{error}  resolveHandle1: $json->{message}");
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -358,25 +358,27 @@ sub uploadBlob {
 ### Utility subroutines
 # make record form message
 sub makeRecord {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $msg		= shift;
 	my $option	= shift;
-	my $collection	= $option ? ($option->{postType}	? $option->{postType}	: $self->{postType}		): $self->{postType};
-	my $langs		= $option ? ($option->{langs}		? $option->{langs}		: $self->{langs}		): $self->{langs};
-	my $invalidOgp	= $option ? ($option->{invalidOgp}	? $option->{invalidOgp}	: $self->{invalidOgp}	): undef;
+	my $collection	= defined($option->{collection})	? $option->{collection}	: $atProto->{postType};
+	my $langs		= defined($option->{langs})			? $option->{langs}		: $atProto->{langs};
+	my $forDM		= defined($option->{forDM})			? $option->{forDM}		: $atProto->{forDM};
 	#my ($sec,$min,$hour,$mday,$mon,$year,$wday,$stime) = localtime(time());
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$stime) = gmtime(time());
 	my $date = sprintf("%04d-%02d-%02dT%02d:%02d:%02d+00:00", $year+1900,$mon+1,$mday,$hour,$min,$sec);
-	my $createAt	= $option ? ($option->{createAt}	? $option->{createAt}	: $date		): $date;
+	my $createAt	= defined($option->{createAt})	? $option->{createAt}	: $date;
 	my $ret			= undef;
 	eval{
 		my %record  = (
-			"\$type" => $collection,
 			text => $msg, 
-			createdAt => $createAt, 
-			langs => $langs,
 		);
-		my ($facets, $embed) = $self->makeFacetsEmbed($msg,{invalidOgp => $invalidOgp});
+		unless($forDM){
+			$record{createdAt}	= $createAt;
+			$record{langs}		= $langs;
+			$record{"\$type"}	= $collection;
+		}
+		my ($facets, $embed) = $atProto->makeFacetsEmbed($msg,{forDM => $forDM});
 		if($facets && ref($facets) =~ /array/i && scalar(@$facets)){
 			$record{facets} = $facets;
 		}
@@ -387,7 +389,7 @@ sub makeRecord {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -395,15 +397,15 @@ sub makeRecord {
 
 # make Facets(URL, tag, mention) and Embed(ogp) from message
 sub makeFacetsEmbed {
-	my $self = shift;
+	my $atProto = shift;
 	my $msg = shift;
 	my $option	= shift;
-	my $collection	= $option ? ($option->{embedType}	? $option->{embedType}	: $self->{embedType}	): $self->{embedType};
-	my $invalidOgp	= $option ? ($option->{invalidOgp}	? $option->{invalidOgp}	: $self->{invalidOgp}	): undef;
+	my $collection	= defined($option->{embedType})	? $option->{embedType}	: $atProto->{embedType};
+	my $forDM		= defined($option->{forDM})		? $option->{forDM}		: $atProto->{forDM};
 	my @facets = ();
 	my %embed = ();
 	#url
-	my $f_ogp = $invalidOgp ? undef:1;
+	my $f_ogp = $forDM ? undef:1;
 	while($msg =~ /((https|http):\/\/[\-a-z0-9@:%\._+~#=]{1,256}\.[a-z0-9]{1,6}(\/[\-a-z0-9@:%\._+~#=\/]{1,256})*(\?[\S]+)*)/gi){
 		my $uri = $1;
 		push(@facets, {
@@ -415,7 +417,7 @@ sub makeFacetsEmbed {
 		});
 		## ogp
 		$f_ogp or next;
-		my $ogp = $self->getOpenGraphProtocol($uri)	or next;
+		my $ogp = $atProto->getOpenGraphProtocol($uri)	or next;
 		$f_ogp = undef;
 		$embed{"\$type"} = $collection;
 		$embed{external} = {
@@ -424,7 +426,7 @@ sub makeFacetsEmbed {
 			description => ($ogp->{description} ? $ogp->{description} : '')
 		};
 		if($ogp->{imgblob}){
-			my $blob = $self->uploadBlob($ogp->{imgblob});
+			my $blob = $atProto->uploadBlob($ogp->{imgblob});
 			if($blob && ref($blob) =~ /hash/i){
 				$embed{external}{thumb} = $blob;
 			}
@@ -442,7 +444,7 @@ sub makeFacetsEmbed {
 	}
 	#mention
 	while($msg =~ /\@([0-9a-z\.\_\-]+)/gi){
-		my $did = $self->resolveHandle($1) or next;
+		my $did = $atProto->resolveHandle($1) or next;
 		push(@facets, {
 			'index' => {
 				'byteStart' => bytes::length($`), 
@@ -460,7 +462,7 @@ sub makeFacetsEmbed {
 
 # get OGP title,type,description,image_url,image_blob
 sub getOpenGraphProtocol {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $uri		= shift;
 	my $ret		= {};
 	eval {
@@ -472,7 +474,7 @@ sub getOpenGraphProtocol {
 		}
 		my $req		= HTTP::Request->new ('GET', $uri)	or die("Failed to initialize HTTP::Request: $uri err: $!");
 		my $ua		= LWP::UserAgent->new				or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res		= $ua->request ($req)				or die("Failed to request: $!");
 		my $sl = $res->status_line;
 		unless($sl =~ /ok/i){
@@ -553,7 +555,7 @@ sub getOpenGraphProtocol {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -595,26 +597,60 @@ sub checkMagicByte {
 # exclusive control. multi-process safe
 # return hash(createRecord)
 sub post {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $msg 	= shift;
 	my $option	= shift;
-	my $createAt	= $option ? ($option->{createAt}	? $option->{createAt}	: undef	): undef;
-	my $collection	= $option ? ($option->{postType}	? $option->{postType}	: $self->{postType}	): $self->{postType};
+	my $createAt	= defined($option->{createAt})		? $option->{createAt}	: undef;
+	my $collection	= defined($option->{collection})	? $option->{collection}	: $atProto->{postType};
 	my $ret		= undef;
 	eval{
-		$self->getAccessToken()							or die("Err getAccessToken: $self->{err}");#start exclusive control
+		$atProto->getAccessToken()							or die("Err getAccessToken: $atProto->{err}");#start exclusive control
 		my $option = {collection => $collection};
 		$createAt or $option->{createAt} = $createAt;
-		my $record = $self->makeRecord($msg, $option)	or die("Err makeRecord: $self->{err}");
+		my $record = $atProto->makeRecord($msg, $option)	or die("Err makeRecord: $atProto->{err}");
 		#my $jsont = encode_json($record);
 		#print "Record:\n$jsont\n\n";
-		$ret = $self->createRecord($record)				or die("Err createRecord: $self->{err}");
-		$self->releaseAccessToken()						or die("Err releaseAccessToken: $self->{err}");#finish exclusive control
+		$ret = $atProto->createRecord($record)				or die("Err createRecord: $atProto->{err}");
+		$atProto->releaseAccessToken()						or die("Err releaseAccessToken: $atProto->{err}");#finish exclusive control
 	};
 	if($@){
 		chomp $@;
-		$self->{err} = $@;
-		$self->releaseAccessToken();
+		$atProto->{err} = $@;
+		$atProto->releaseAccessToken();
+		$ret = undef;
+	}
+	return $ret;
+}
+
+# follow
+# exclusive control. multi-process safe
+# return hash(createRecord)
+sub follow {
+	my $atProto	= shift;
+	my $handle 	= shift;
+	my $option	= shift;
+	#my $createAt	= defined($option->{createAt})	? $option->{createAt}	: undef;
+	my $collection	= 'app.bsky.graph.follow';
+	my $ret		= undef;
+	eval{
+		$atProto->getAccessToken()							or die("Err getAccessToken: $atProto->{err}");#start exclusive control
+		my $option = {collection => $collection};
+		my ($sec,$min,$hour,$mday,$mon,$year,$wday,$stime) = gmtime(time());
+		my $createAt = sprintf("%04d-%02d-%02dT%02d:%02d:%02d+00:00", $year+1900,$mon+1,$mday,$hour,$min,$sec);
+		my $did = $atProto->resolveHandle($handle) or die("Cannot resolveHandle: $handle");
+		my $record = {
+			'subject' => $did,
+			'createdAt' => $createAt,
+			'$type' => $collection
+		};
+		$option->{postType} = $collection;
+		$ret = $atProto->createRecord($record, $option)	or die("Err createRecord: $atProto->{err}");
+		$atProto->releaseAccessToken()					or die("Err releaseAccessToken: $atProto->{err}");#finish exclusive control
+	};
+	if($@){
+		chomp $@;
+		$atProto->{err} = $@;
+		$atProto->releaseAccessToken();
 		$ret = undef;
 	}
 	return $ret;

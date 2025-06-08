@@ -26,17 +26,17 @@ use constant {
 
 # constructor
 sub new {
-	my $class		= shift;
+	my $atProto		= shift;
 	my $identifier 	= shift;
 	my $password	= shift;
 	my $directory	= shift;
 	my $option		= shift;
-	my $requestUri	= $option ? ($option->{pdsUri}		? $option->{pdsUri}		: PDS_URI_A) : PDS_URI_A;
-	my $userAgent	= $option ? ($option->{userAgent}	? $option->{userAgent}	: USERAGENT) : USERAGENT;
+	my $requestUri	= defined($option->{pdsUri})	? $option->{pdsUri}		: PDS_URI_A;
+	my $userAgent	= defined($option->{userAgent})	? $option->{userAgent}	: USERAGENT;
 	my $err = '';
 	if($identifier && $password && $directory){
 		my $self = {requestUri => $requestUri, identifier => $identifier, password => $password, directory => $directory, serviceEndpoint => $requestUri};
-		return bless $self, $class;
+		return bless $self, $atProto;
 	}else{
 		@! = "Err not set Identifier or Password or directory.";
 		return undef;
@@ -44,22 +44,22 @@ sub new {
 }
 # destructor
 sub DESTROY {
-	my $self = shift;
-	$self->releaseAccessToken();
+	my $atProto = shift;
+	$atProto->releaseAccessToken();
 }
 
 ################# At Protocol API ##################
 # com.atproto.server.createSession
 sub createSession {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $option	= shift;
-	my $identifier	= $option ? ($option->{identifier}	? $option->{identifier}	: $self->{identifier}	): $self->{identifier};
-	my $password	= $option ? ($option->{password}	? $option->{password}	: $self->{password}		): $self->{password};
+	my $identifier	= defined($option->{identifier})	? $option->{identifier}	: $atProto->{identifier};
+	my $password	= defined($option->{password})		? $option->{password}	: $atProto->{password};
 	my $ret			= undef;
 	eval{
 		my $jsont		= "{\"identifier\": \"$identifier\", \"password\": \"$password\"}";
 		my $req = HTTP::Request->new ('POST', 
-			$self->{requestUri}.'/xrpc/com.atproto.server.createSession', 
+			$atProto->{requestUri}.'/xrpc/com.atproto.server.createSession', 
 			['Content-Type' => 'application/json', 'Accept' => 'application/json'], 
 			$jsont)
 		or die("Failed to initialize HTTP::Request(com.atproto.server.createSession): $!");
@@ -71,29 +71,29 @@ sub createSession {
 			die("Status is $sl.");
 		}
 		my $session 			= decode_json($res->decoded_content);
-		$self->{content}	= $session;
-		$self->{did}		= $session->{did}			or die("Err $session->{error} createSession1: $session->{message}");
-		$self->{accessJwt}	= $session->{accessJwt}		or die("Err $session->{error} createSession2: $session->{message}");
-		$self->{refreshJwt}	= $session->{refreshJwt}	or die("Err $session->{error} createSession3: $session->{message}");
+		$atProto->{content}	= $session;
+		$atProto->{did}		= $session->{did}			or die("Err $session->{error} createSession1: $session->{message}");
+		$atProto->{accessJwt}	= $session->{accessJwt}		or die("Err $session->{error} createSession2: $session->{message}");
+		$atProto->{refreshJwt}	= $session->{refreshJwt}	or die("Err $session->{error} createSession3: $session->{message}");
 		$ret = 1;
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # com.atproto.server.refreshSession
 sub refreshSession {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $option	= shift;
-	my $refreshJwt	= $option ? ($option->{refreshJwt}	? $option->{refreshJwt}	: $self->{refreshJwt})	:  $self->{refreshJwt};
+	my $refreshJwt	= defined($option->{refreshJwt})	? $option->{refreshJwt}	: $atProto->{refreshJwt};
 	#print $refreshJwt."\n";
 	my $ret			= undef;
 	eval{
 		my $req = HTTP::Request->new ('POST', 
-			$self->{requestUri}.'/xrpc/com.atproto.server.refreshSession', 
+			$atProto->{requestUri}.'/xrpc/com.atproto.server.refreshSession', 
 			['Authorization' => 'Bearer '.$refreshJwt, 'Accept' => 'application/json'])
 		or die("Failed to initialize HTTP::Request(com.atproto.server.refreshSession:$refreshJwt)");
 		my $ua = LWP::UserAgent->new	or die('Failed to initialize LWP::UserAgent');
@@ -103,30 +103,30 @@ sub refreshSession {
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
 			die("Status is $sl.");
 		}
-		my $session 		= decode_json($res->decoded_content);
-		$self->{content}	= $session;
-		$self->{did}		= $session->{did}			or die("Err $session->{error} refreshSession1: $session->{message}");
-		$self->{accessJwt}	= $session->{accessJwt}		or die("Err $session->{error} refreshSession2: $session->{message}");
-		$self->{refreshJwt}	= $session->{refreshJwt}	or die("Err $session->{error} refreshSession3: $session->{message}");
+		my $session 			= decode_json($res->decoded_content);
+		$atProto->{content}		= $session;
+		$atProto->{did}			= $session->{did}			or die("Err $session->{error} refreshSession1: $session->{message}");
+		$atProto->{accessJwt}	= $session->{accessJwt}		or die("Err $session->{error} refreshSession2: $session->{message}");
+		$atProto->{refreshJwt}	= $session->{refreshJwt}	or die("Err $session->{error} refreshSession3: $session->{message}");
 		$ret = 1;
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # com.atproto.server.deleteSession
 sub deleteSession {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $option	= shift;
-	my $refreshJwt	= $option ? ($option->{refreshJwt}	? $option->{refreshJwt}	: $self->{refreshJwt})	:  $self->{refreshJwt};
+	my $refreshJwt	= defined($option->{refreshJwt})	? $option->{refreshJwt}	: $atProto->{refreshJwt};
 	#print $refreshJwt."\n";
 	my $ret			= undef;
 	eval{
 		my $req = HTTP::Request->new ('POST', 
-			$self->{requestUri}.'/xrpc/com.atproto.server.deleteSession', 
+			$atProto->{requestUri}.'/xrpc/com.atproto.server.deleteSession', 
 			['Authorization' => 'Bearer '.$refreshJwt, 'Accept' => 'application/json'])
 		or die("Failed to initialize HTTP::Request(com.atproto.server.deleteSession:$refreshJwt): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
@@ -138,15 +138,15 @@ sub deleteSession {
 		}
 		my $session 		= decode_json($res->decoded_content);
 		$session->{error}	&& die("Err $session->{error} deleteSession1: $session->{message}");
-		$self->{content} = $session;
-		$self->{did}		= undef;
-		$self->{accessJwt}	= undef;
-		$self->{refreshJwt}	= undef;
+		$atProto->{content} = $session;
+		$atProto->{did}		= undef;
+		$atProto->{accessJwt}	= undef;
+		$atProto->{refreshJwt}	= undef;
 		$ret = 1;
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -154,14 +154,14 @@ sub deleteSession {
 
 # com.atproto.server.getSession
 sub getSession {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	#print $refreshJwt."\n";
 	my $ret			= undef;
 	eval{
 		my $req = HTTP::Request->new ('GET', 
-		$self->{requestUri}.'/xrpc/com.atproto.server.getSession', 
+		$atProto->{requestUri}.'/xrpc/com.atproto.server.getSession', 
 		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json'])
 		or die("Failed to initialize HTTP::Request(com.atproto.server.getSession:$accessJwt): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
@@ -175,21 +175,21 @@ sub getSession {
 		$session->{error}	&& die("Err $session->{error} getSession1: $session->{message}");
 		$ret = $session;
 		## set serviceEndpoint
-		$self->{serviceEndpoint} = $self->{requestUri};
+		$atProto->{serviceEndpoint} = $atProto->{requestUri};
 		my @services = ();
 		if(ref($ret->{didDoc}{service}) =~ /ARRAY/i){
 			@services = @{$ret->{didDoc}{service}};
 		}
 		foreach my $service (@services){
 			if($service->{type} =~ /AtprotoPersonalDataServer/i){
-				$self->{serviceEndpoint} = $service->{serviceEndpoint};
+				$atProto->{serviceEndpoint} = $service->{serviceEndpoint};
 				last;
 			}
 		}
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -197,31 +197,30 @@ sub getSession {
 
 # com.atproto.identity.resolveHandle
 sub resolveHandle {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $handle	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	):  $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
-		my $jsont		= "{\"handle\": \"$handle\"}";
 		my $req = HTTP::Request->new ('GET', 
-		$self->{requestUri}.'/xrpc/com.atproto.identity.resolveHandle?handle='.$handle, 
+		$atProto->{requestUri}.'/xrpc/com.atproto.identity.resolveHandle?handle='.$handle, 
 		['Authorization' => 'Bearer '.$accessJwt, 'Accept' => 'application/json'])
 		or die("Failed to initialize HTTP::Request(com.atproto.identity.resolveHandle?handle=$handle): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
 			die("Status is $sl.");
 		}
 		my $session 	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		$ret			= $session->{did} or die("Err $session->{error}  resolveHandle1: $session->{message}");
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -230,21 +229,21 @@ sub resolveHandle {
 ################# Perl Original (Wraper At Protocol)##################
 # multi-process multi-thread safe。
 sub getAccessToken {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $ret		= undef;
 	my $flock	= undef;
 	my $fh		= undef;
 	eval{
 		local $SIG{ALRM} = sub { die "timeout"; };							# set time out
 		alarm(60);
-		open($flock, '+<', $self->{directory}.FLOCK_FILE.$self->{identifier}.'.txt') or die('Cannot open '.$self->{directory}.FLOCK_FILE.$self->{identifier}.".txt: $!");
+		open($flock, '+<', $atProto->{directory}.FLOCK_FILE.$atProto->{identifier}.'.txt') or die('Cannot open '.$atProto->{directory}.FLOCK_FILE.$atProto->{identifier}.".txt: $!");
 		my $old = select($flock); $| = 1; select($old);						# no buffering
-		$self->{'flock'} = $flock;
+		$atProto->{'flock'} = $flock;
 		flock($flock, LOCK_EX) or die('Cannot lock '.FLOCK_FILE.": $!");
 		alarm(0);															# unset  time out
 		print $flock 'GetAccessToken:'.time();
 		##read AccessToken file
-		my $tmp = open $fh, '<', $self->{directory}.ACCESS_TOKEN_FILE.$self->{identifier}.'.json';
+		my $tmp = open $fh, '<', $atProto->{directory}.ACCESS_TOKEN_FILE.$atProto->{identifier}.'.json';
 		my $accessTokenT = '';
 		if($tmp){
 			while (my $line = <$fh>) {
@@ -261,7 +260,7 @@ sub getAccessToken {
 		}
 		##if Life time of access token had less than 180 seconds left, call refreshSession or createSession
 		if($accessTokenJ->{payload}{exp}-180 < time()){
-			$tmp = open $fh, '<', $self->{directory}.REFRESH_TOKEN_FILE.$self->{identifier}.'.json';
+			$tmp = open $fh, '<', $atProto->{directory}.REFRESH_TOKEN_FILE.$atProto->{identifier}.'.json';
 			my $refreshTokenT = '';
 			if($tmp){
 				while (my $line = <$fh>) {
@@ -280,23 +279,23 @@ sub getAccessToken {
 			#print "exp:$refreshTokenJ->{payload}{exp}, time:".time()."\n";
 			if($refreshTokenJ->{payload}{exp}-180 < time()){
 				#print "createSession\n";
-				$self->createSession() or die('Err createSession:'.$self->{err});
-				$self->_writeSession() or die('Err _writeSession:'.$self->{err});
+				$atProto->createSession() or die('Err createSession:'.$atProto->{err});
+				$atProto->_writeSession() or die('Err _writeSession:'.$atProto->{err});
 			}else{
 				#print "refreshSession\n";
-				$self->refreshSession({refreshJwt => $refreshTokenJ->{jwt}}) or die('Err createSession:'.$self->{err});
-				$self->_writeSession() or die('Err _writeSession:'.$self->{err});
+				$atProto->refreshSession({refreshJwt => $refreshTokenJ->{jwt}}) or die('Err createSession:'.$atProto->{err});
+				$atProto->_writeSession() or die('Err _writeSession:'.$atProto->{err});
 			}
 		}else{
-			$self->{accessJwt}	= $accessTokenJ->{jwt};
-			$self->{did}		= $accessTokenJ->{did};
+			$atProto->{accessJwt}	= $accessTokenJ->{jwt};
+			$atProto->{did}		= $accessTokenJ->{did};
 		}
 		$ret = 1;
 	};
 	if($@){
 		alarm(0);	# unset  time out
 		chomp $@;
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		releaseAccessToken();
 		if($fh){
 			close $fh;
@@ -308,23 +307,23 @@ sub getAccessToken {
 
 # Exit exclusive control of Access Token without Disable Access Token
 sub releaseAccessToken {
-	my $self = shift;
+	my $atProto = shift;
 	my $ret = undef;
 	eval{
-		my $flock = $self->{'flock'};
+		my $flock = $atProto->{'flock'};
 		if($flock){
 			truncate($flock, 0);
 			seek($flock, 0, 0);
 			print $flock 'ReleaseAccessToken:'.time();
 			close $flock or die "Cannot close flock: $!";
 			#flock($flock, LOCK_UN) or die "Cannot unlock flock: $!";
-			$self->{'flock'} = undef;
+			$atProto->{'flock'} = undef;
 		}
 		$ret = 1;
 	};
 	if($@){
 		chomp $@;
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -332,20 +331,20 @@ sub releaseAccessToken {
 
 # Exit exclusive control of Access Token with Disable Access Token
 sub deleteAccessToken {
-	my $self = shift;
+	my $atProto = shift;
 	my $ret = undef;
 	my $fh = undef;
 	eval{
-		$self->deleteSession() or die($self->{err});
+		$atProto->deleteSession() or die($atProto->{err});
 		my $a;
-		$a	= _filePrint($self->{directory}.ACCESS_TOKEN_FILE.$self->{identifier}.'.json',	'');
-		$a	= _filePrint($self->{directory}.REFRESH_TOKEN_FILE.$self->{identifier}.'.json',	'');
-		$self->releaseAccessToken() or die($self->{err});
+		$a	= _filePrint($atProto->{directory}.ACCESS_TOKEN_FILE.$atProto->{identifier}.'.json',	'');
+		$a	= _filePrint($atProto->{directory}.REFRESH_TOKEN_FILE.$atProto->{identifier}.'.json',	'');
+		$atProto->releaseAccessToken() or die($atProto->{err});
 		$ret = 1;
 	};
 	if($@){
 		chomp $@;
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -353,7 +352,7 @@ sub deleteAccessToken {
 
 ## hash to Query for GET
 sub makeQuery {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $ref_p	= shift;
 	my $ret		= '';
 	if(ref($ref_p) =~ /hash/i){
@@ -367,23 +366,23 @@ sub makeQuery {
 			}
 		}
 	}else{
-		$self->{err} = 'makeQuery need hash refference'
+		$atProto->{err} = 'makeQuery need hash refference'
 	}
 	return $ret;
 }
 
 # write Jwt,did information to ACCESS_TOKEN_FILE
 sub _writeSession {
-	my $self = shift;
+	my $atProto = shift;
 	my $option = shift;
 	my $ret = 1;
 	eval{
-		my $flock = $self->{'flock'} or die('Err not set FLOCK');
-		my $refreshJwt	= $option ? ($option->{refreshJwt}	? $option->{refreshJwt}	: $self->{refreshJwt}	):  $self->{refreshJwt}
+		my $flock = $atProto->{'flock'} or die('Err not set FLOCK');
+		my $refreshJwt	= defined($option->{refreshJwt})	? $option->{refreshJwt}	: $atProto->{refreshJwt}
 			or die('Err not set refreshJwt');
-		my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	):  $self->{accessJwt}
+		my $accessJwt	= defined($option->{accessJwt})		? $option->{accessJwt}	: $atProto->{accessJwt}
 			or die('Err not set accessJwt');
-		my $did			= $option ? ($option->{did}			? $option->{did}		: $self->{did}			):  $self->{did}
+		my $did			= defined($option->{did})			? $option->{did}		: $atProto->{did}
 			or die('Err not set did');
 		my @refreshJwtA		= split(/\./, $refreshJwt);
 		my $refreshPayload	= decode_json(decode_base64($refreshJwtA[1]));
@@ -394,14 +393,14 @@ sub _writeSession {
 		my $accessSessionJ	= {payload => $accessPayload	, jwt => $accessJwt		, did => $did};
 		my $accessSessionT	= encode_json($accessSessionJ);
 		my $a;
-		$a	= _filePrint($self->{directory}.ACCESS_TOKEN_FILE.$self->{identifier}.'.json',	$accessSessionT);
+		$a	= _filePrint($atProto->{directory}.ACCESS_TOKEN_FILE.$atProto->{identifier}.'.json',	$accessSessionT);
 		if($a->{err}){die $a->{err};}
-		$a	= _filePrint($self->{directory}.REFRESH_TOKEN_FILE.$self->{identifier}.'.json',	$refreshSessionT);
+		$a	= _filePrint($atProto->{directory}.REFRESH_TOKEN_FILE.$atProto->{identifier}.'.json',	$refreshSessionT);
 		if($a->{err}){die $a->{err};}
 	};
 	if($@){
 		chomp $@;
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;

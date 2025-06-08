@@ -1,4 +1,4 @@
-package AtProtocol::BSkyChat;
+package AtProtocol::BskyChat;
 
 use strict;
 use warnings;
@@ -14,8 +14,9 @@ use constant {
 	USERAGENT	=> 'AtProtocol::Chat',
 	##at protocol
 	PDS_URI_A	=> 'https://bsky.social',
+	CHAT_URI	=> 'https://api.bsky.chat',
 	#PDS_URI_A	=> 'https://scarletina.us-east.host.bsky.network',
-	ACCEPT_LABELERS	=> 'did:plc:ar7c4by46qjdydhdevvrndac;redact',
+	ACCEPT_LABELERS	=> 'did:plc:ar7c4by46qjdydhdevvrndac;redact, did:plc:vhgppeyjwgrr37vm4v6ggd5a;redact',
 	CHAT_PROXY	=> 'did:web:api.bsky.chat#bsky_chat',
 	CHAT_TYPE	=> 'chat.bsky.convo.defs#messageView',
 	EMBED		=> 'app.bsky.embed.external',
@@ -24,7 +25,7 @@ use constant {
 
 # constructor
 sub new {
-	my $class		= shift;
+	my $atProto		= shift;
 	my $identifier 	= shift;
 	my $password	= shift;
 	my $directory	= shift;
@@ -49,28 +50,28 @@ sub new {
 		$! = $@;
 		return undef;
 	}else{
-		return bless $self, $class;
+		return bless $self, $atProto;
 	}
 }
 # destructor
 sub DESTROY {
-	my $self = shift;
-	$self->SUPER::DESTROY();
+	my $atProto = shift;
+	$atProto->SUPER::DESTROY();
 }
 ##  override
 # getAccessToken
 sub getAccessToken {
-	my $self = shift;
+	my $atProto = shift;
 	my $handle	= shift;
 	my $option	= shift;
 	my $ret			= undef;
 	eval{
-		$ret = $self->SUPER::getAccessToken($handle, $option)	or die($self->{err});
-		$self->getSession()										or die($self->{err});
+		$ret = $atProto->SUPER::getAccessToken($handle, $option)	or die($atProto->{err});
+		$atProto->getSession()										or die($atProto->{err});
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -79,27 +80,27 @@ sub getAccessToken {
 ###  API app.bsky.actor
 # app.bsky.actor.getProfile
 sub actor_getProfile {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $actor	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my %param = (actor => $actor);
-		my $query = $self->makeQuery(\%param);
+		my $query = $atProto->makeQuery(\%param);
 		my $req = HTTP::Request->new (
 		'GET', 
-		$self->{serviceEndpoint}.'/xrpc/app.bsky.actor.getProfile?'.$query,
+		$atProto->{serviceEndpoint}.'/xrpc/app.bsky.actor.getProfile?'.$query,
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
 		or die("Failed to initialize HTTP::Request(app.bsky.actor.getProfile?$$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -107,7 +108,7 @@ sub actor_getProfile {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} actor_getProfile: $session->{message}");
 		}
@@ -115,34 +116,34 @@ sub actor_getProfile {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # app.bsky.actor.getProfiles
 sub actor_getProfiles {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $actors	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my %param = (actors => $actors);
-		my $query = $self->makeQuery(\%param);
+		my $query = $atProto->makeQuery(\%param);
 		my $req = HTTP::Request->new (
 		'GET', 
-		$self->{serviceEndpoint}.'/xrpc/app.bsky.actor.getProfiles?'.$query,
+		$atProto->{serviceEndpoint}.'/xrpc/app.bsky.actor.getProfiles?'.$query,
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
 		or die("Failed to initialize HTTP::Request(app.bsky.actor.getProfiles?$$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -150,7 +151,7 @@ sub actor_getProfiles {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} actor_getProfiles: $session->{message}");
 		}
@@ -158,7 +159,7 @@ sub actor_getProfiles {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -167,11 +168,11 @@ sub actor_getProfiles {
 ###  API chat.bsky.convo
 # chat.bsky.convo.deleteMessageForSelf
 sub convo_deleteMessageForSelf {
-	my $self		= shift;
+	my $atProto		= shift;
 	my $convoId		= shift;
 	my $messageId	= shift;
 	my $option		= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my %param = (
@@ -181,18 +182,18 @@ sub convo_deleteMessageForSelf {
 		my $jsont = encode_json(\%param);
 		my $req = HTTP::Request->new (
 			'POST', 
-			$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.deleteMessageForSelf',
+			$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.deleteMessageForSelf',
 			[
-				'Authorization' => 'Bearer '.$self->{accessJwt}, 
+				'Authorization' => 'Bearer '.$accessJwt, 
 				'atproto-proxy' => CHAT_PROXY,
-				'atproto-accept-labelers' => $self->{acceptLabelers},
+				'atproto-accept-labelers' => $atProto->{acceptLabelers},
 				'Accept' => 'application/json'
 			],
 			$jsont
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.deleteMessageForSelf): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -200,7 +201,7 @@ sub convo_deleteMessageForSelf {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_deleteMessageForSelf: $session->{message}");
 		}
@@ -208,34 +209,42 @@ sub convo_deleteMessageForSelf {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
-# chat.bsky.convo.getConvoForMembers
-sub convo_getConvoForMembers {
-	my $self	= shift;
+# chat.bsky.convo.getConvoAvailability
+sub convo_getConvoAvailability {
+	my $atProto	= shift;
 	my $members	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
-		my %param = (members => $members);
-		my $query = $self->makeQuery(\%param);
+		my $query = '';
+		if(ref($members) eq 'ARRAY'){
+			foreach my $a (@$members){
+				$query .= "members=$a&";
+			}
+		}elsif(ref($members) eq '' && $members){
+			$query = "members=$members";
+		}else{
+			die("Members is not ARRAY or STRING.");
+		}
 		my $req = HTTP::Request->new (
-			'GET', 
-			$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.getConvoForMembers?'.$query,
-			[
-				'Authorization' => 'Bearer '.$self->{accessJwt}, 
-				'atproto-proxy' => CHAT_PROXY,
-				'atproto-accept-labelers' => $self->{acceptLabelers},
-				'Accept' => 'application/json'
-			]
+		'GET', 
+		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.getConvoAvailability?'.$query,
+		[
+		'Authorization' => 'Bearer '.$accessJwt, 
+		'atproto-proxy' => CHAT_PROXY,
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
+		'Accept' => 'application/json'
+		]
 		)
-		or die("Failed to initialize HTTP::Request(chat.bsky.convo.getConvoForMembers?$$query): $!");
+		or die('Failed to initialize HTTP::Request(chat.bsky.convo.getConvoAvailability?'."$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -243,7 +252,58 @@ sub convo_getConvoForMembers {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
+		if($session->{error}){
+			die("Err $session->{error} convo_getConvoAvailability: $session->{message}");
+		}
+		$ret = $session;
+	};
+	if($@){
+		chomp($@);
+		$atProto->{err} = $@;
+		$ret = undef;
+	}
+	return $ret;
+}
+# chat.bsky.convo.getConvoForMembers
+sub convo_getConvoForMembers {
+	my $atProto	= shift;
+	my $members	= shift;
+	my $option	= shift;
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
+	my $ret			= undef;
+	eval{
+		my $query = '';
+		if(ref($members) eq 'ARRAY'){
+			foreach my $a (@$members){
+				$query .= "members=$a&";
+			}
+		}elsif(ref($members) eq '' && $members){
+			$query = "members=$members";
+		}else{
+			die("Members is not ARRAY or STRING.");
+		}
+		my $req = HTTP::Request->new (
+			'GET', 
+			$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.getConvoForMembers?'.$query,
+			[
+				'Authorization' => 'Bearer '.$accessJwt, 
+				'atproto-proxy' => CHAT_PROXY,
+				'atproto-accept-labelers' => $atProto->{acceptLabelers},
+				'Accept' => 'application/json'
+			]
+		)
+		or die("Failed to initialize HTTP::Request(chat.bsky.convo.getConvoForMembers?$$query): $!");
+		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
+		$ua->agent($atProto->{userAgent});
+		my $res = $ua->request ($req)		or die("Failed to request: $!");
+		my $sl	= $res->status_line;
+		if($sl !~ /ok|Bad Request|Unauthorized/i){
+			print $res->decoded_content."\n";
+			die("Status is $sl.");
+		}
+		my $session	= decode_json($res->decoded_content);
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_getConvoForMembers: $session->{message}");
 		}
@@ -251,34 +311,34 @@ sub convo_getConvoForMembers {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # chat.bsky.convo.getConvo
 sub convo_getConvo {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $convoId	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my %param = (convoId => $convoId);
-		my $query = $self->makeQuery(\%param);
+		my $query = $atProto->makeQuery(\%param);
 		my $req = HTTP::Request->new (
 			'GET', 
-			$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.getConvo?'.$query,
+			$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.getConvo?'.$query,
 			[
-				'Authorization' => 'Bearer '.$self->{accessJwt}, 
+				'Authorization' => 'Bearer '.$accessJwt, 
 				'atproto-proxy' => CHAT_PROXY,
-				'atproto-accept-labelers' => $self->{acceptLabelers},
+				'atproto-accept-labelers' => $atProto->{acceptLabelers},
 				'Accept' => 'application/json'
 			]
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.getConvo?$$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -286,7 +346,7 @@ sub convo_getConvo {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_getConvo: $session->{message}");
 		}
@@ -294,43 +354,43 @@ sub convo_getConvo {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # chat.bsky.convo.getLog
 sub convo_getLog {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $cursor	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my %param = ();
 		$cursor && ($param{cursor} = $cursor);
-		my $query = $self->makeQuery(\%param);
+		my $query = $atProto->makeQuery(\%param);
 		my $req = HTTP::Request->new (
 		'GET', 
-		$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.getLog?'.$query,
+		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.getLog?'.$query,
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.getLog?$$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
-			print $res->decoded_content."\n";
+			#print $res->decoded_content."\n";
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_getLog: $session->{message}");
 		}
@@ -338,38 +398,38 @@ sub convo_getLog {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # chat.bsky.convo.getMessages
 sub convo_getMessages {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $convoId	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
-	my $limit		= $option ? ($option->{limit}		? $option->{limit}		: undef					): undef;
-	my $cursor		= $option ? ($option->{cursor}		? $option->{cursor}		: undef					): undef;
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
+	my $limit		= defined($option->{limit})		? $option->{limit}		: undef;
+	my $cursor		= defined($option->{cursor})	? $option->{cursor}		: undef;
 	my $ret			= undef;
 	eval{
 		my %param = (convoId => $convoId);
 		$limit	&& ($param{limit}	= $limit);
 		$cursor	&& ($param{cursor}	= $cursor);
-		my $query = $self->makeQuery(\%param);
+		my $query = $atProto->makeQuery(\%param);
 		my $req = HTTP::Request->new (
 		'GET', 
-		$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.getMessages?'.$query,
+		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.getMessages?'.$query,
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.getMessages?$$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -377,7 +437,7 @@ sub convo_getMessages {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_getMessages: $session->{message}");
 		}
@@ -385,34 +445,34 @@ sub convo_getMessages {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # chat.bsky.convo.leaveConvo
 sub convo_leaveConvo {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $convoId	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my %param = (convoId => $convoId);
-		my $query = $self->makeQuery(\%param);
+		my $query = $atProto->makeQuery(\%param);
 		my $req = HTTP::Request->new (
 		'GET', 
-		$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.leaveConvo?'.$query,
+		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.leaveConvo?'.$query,
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.leaveConvo?$$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -420,7 +480,7 @@ sub convo_leaveConvo {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_leaveConvo: $session->{message}");
 		}
@@ -428,37 +488,37 @@ sub convo_leaveConvo {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # chat.bsky.convo.listConvos
 sub convo_listConvos {
-	my $self	= shift;
+	my $atProto	= shift;
 	my $option	= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
-	my $limit		= $option ? ($option->{limit}		? $option->{limit}		: 20					): 20;
-	my $cursor		= $option ? ($option->{cursor}		? $option->{cursor}		: undef					): undef;
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
+	my $limit		= defined($option->{limit})		? $option->{limit}		: 20;
+	my $cursor		= defined($option->{cursor})		? $option->{cursor}	: undef;
 	my $ret			= undef;
 	eval{
 		my %param = ();
 		$limit	&& ($param{limit}	= $limit);
 		$cursor	&& ($param{cursor}	= $cursor);
-		my $query = $self->makeQuery(\%param);
+		my $query = $atProto->makeQuery(\%param);
 		my $req = HTTP::Request->new (
 		'GET', 
-		$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.listConvos?'.$query,
+		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.listConvos?'.$query,
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => 'application/json'
 		]
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.listConvos?$$query): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -466,7 +526,7 @@ sub convo_listConvos {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_listConvos: $session->{message}");
 		}
@@ -474,35 +534,35 @@ sub convo_listConvos {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # chat.bsky.convo.muteConvo
 sub convo_muteConvo {
-	my $self		= shift;
+	my $atProto		= shift;
 	my $convoId		= shift;
 	my $option		= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my %param = (convoId => $convoId);
 		my $jsont = encode_json(\%param);
 		my $req = HTTP::Request->new (
 		'POST', 
-		$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.muteConvo',
+		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.muteConvo',
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => 'application/json'
 		],
 		$jsont
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.muteConvo): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -510,7 +570,7 @@ sub convo_muteConvo {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_muteConvo: $session->{message}");
 		}
@@ -518,35 +578,35 @@ sub convo_muteConvo {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # chat.bsky.convo.unmuteConvo
 sub convo_unmuteConvo {
-	my $self		= shift;
+	my $atProto		= shift;
 	my $convoId		= shift;
 	my $option		= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my %param = (convoId => $convoId);
 		my $jsont = encode_json(\%param);
 		my $req = HTTP::Request->new (
 		'POST', 
-		$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.unmuteConvo',
+		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.unmuteConvo',
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => 'application/json'
 		],
 		$jsont
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.unmuteConvo): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -554,7 +614,7 @@ sub convo_unmuteConvo {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_unmuteConvo: $session->{message}");
 		}
@@ -562,35 +622,35 @@ sub convo_unmuteConvo {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # chat.bsky.convo.sendMessageBatch
 sub convo_sendMessageBatch {
-	my $self		= shift;
+	my $atProto		= shift;
 	my $items		= shift;
 	my $option		= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my %param = (items => $items);
 		my $jsont = encode_json(\%param);
 		my $req = HTTP::Request->new (
 		'POST', 
-		$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.sendMessageBatch',
+		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.sendMessageBatch',
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => 'application/json'
 		],
 		$jsont
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.sendMessageBatch): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -598,7 +658,7 @@ sub convo_sendMessageBatch {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_sendMessageBatch: $session->{message}");
 		}
@@ -606,43 +666,45 @@ sub convo_sendMessageBatch {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }# chat.bsky.convo.sendMessage
 sub convo_sendMessage {
-	my $self		= shift;
+	my $atProto		= shift;
 	my $convoId		= shift;
 	my $message		= shift;
 	my $option		= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
 	my $ret			= undef;
 	eval{
 		my %param = (convoId => $convoId, message => $message);
 		my $jsont = encode_json(\%param);
 		my $req = HTTP::Request->new (
 		'POST', 
-		$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.sendMessage',
+		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.sendMessage',
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
+		#'Authorization' => 'Bearer eyJ0eXAiOiJhdCtqd3QiLCJhbGciOiJFUzI1NksifQ.eyJzY29wZSI6ImNvbS5hdHByb3RvLmFjY2VzcyIsInN1YiI6ImRpZDpwbGM6Z3Zremp1d2tkZjZhMnp0amNmc292bjY1IiwiaWF0IjoxNzQ5MzA3NzQ0LCJleHAiOjE3NDkzMTQ5NDQsImF1ZCI6ImRpZDp3ZWI6c2NhcmxldGluYS51cy1lYXN0Lmhvc3QuYnNreS5uZXR3b3JrIn0.nywa_h-TYgx-nxfjLaOJGwoi2D_-HeFO8cI9ygtirW7rMa4AgatuczGsYGha37vT6p-WX9n-wpOLF77hlf5Q7w',
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
-		'Accept' => 'application/json'
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
+		'Accept' => '*/*',
+		'Content-Type' => 'application/json',
 		],
 		$jsont
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.sendMessage): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
-			print $res->decoded_content."\n";
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		my $a = $res->decoded_content;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_sendMessage: $session->{message}");
 		}
@@ -650,18 +712,18 @@ sub convo_sendMessage {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
 }
 # chat.bsky.convo.updateRead
 sub convo_updateRead {
-	my $self		= shift;
+	my $atProto		= shift;
 	my $convoId		= shift;
 	my $option		= shift;
-	my $accessJwt	= $option ? ($option->{accessJwt}	? $option->{accessJwt}	: $self->{accessJwt}	): $self->{accessJwt};
-	my $messageId	= $option ? ($option->{messageId}	? $option->{messageId}	: undef					): undef;
+	my $accessJwt	= defined($option->{accessJwt})	? $option->{accessJwt}	: $atProto->{accessJwt};
+	my $messageId	= defined($option->{messageId})	? $option->{messageId}	: undef;
 	my $ret			= undef;
 	eval{
 		my %param = (convoId => $convoId);
@@ -669,18 +731,18 @@ sub convo_updateRead {
 		my $jsont = encode_json(\%param);
 		my $req = HTTP::Request->new (
 		'POST', 
-		$self->{serviceEndpoint}.'/xrpc/chat.bsky.convo.updateRead',
+		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.updateRead',
 		[
-		'Authorization' => 'Bearer '.$self->{accessJwt}, 
+		'Authorization' => 'Bearer '.$accessJwt, 
 		'atproto-proxy' => CHAT_PROXY,
-		'atproto-accept-labelers' => $self->{acceptLabelers},
+		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => 'application/json'
 		],
 		$jsont
 		)
 		or die("Failed to initialize HTTP::Request(chat.bsky.convo.updateRead): $!");
 		my $ua = LWP::UserAgent->new	or die("Failed to initialize LWP::UserAgent: $!");
-		$ua->agent($self->{userAgent});
+		$ua->agent($atProto->{userAgent});
 		my $res = $ua->request ($req)		or die("Failed to request: $!");
 		my $sl	= $res->status_line;
 		if($sl !~ /ok|Bad Request|Unauthorized/i){
@@ -688,7 +750,7 @@ sub convo_updateRead {
 			die("Status is $sl.");
 		}
 		my $session	= decode_json($res->decoded_content);
-		$self->{content} = $session;
+		$atProto->{content} = $session;
 		if($session->{error}){
 			die("Err $session->{error} convo_updateRead: $session->{message}");
 		}
@@ -696,7 +758,7 @@ sub convo_updateRead {
 	};
 	if($@){
 		chomp($@);
-		$self->{err} = $@;
+		$atProto->{err} = $@;
 		$ret = undef;
 	}
 	return $ret;
@@ -707,30 +769,34 @@ sub convo_updateRead {
 # exclusive control. multi-process safe
 # return hash(createRecord)
 sub sendMessage {
-	my $self		= shift;
-	my $handleName	= shift;
+	my $atProto		= shift;
+	my $handle		= shift;
 	my $msg 		= shift;
 	my $option		= shift;
-	my $createAt	= $option ? ($option->{createAt}	? $option->{createAt}	: undef	): undef;
-	my $collection	= $option ? ($option->{chatType}	? $option->{chatType}	: $self->{chatType}	): $self->{chatType};
+	unless(defined($option->{collection})){
+		$option->{collection} = $atProto->{chatType};
+	}
+	$option->{forDM}		= 1;
 	my $ret		= undef;
 	eval{
-		$self->getAccessToken()												or die("Err getAccessToken: $self->{err}");#start exclusive control
-		my $profile = $self->actor_getProfile($handleName)					or die("Err getProfile: $self->{err}");
-		my $convo	= $self->convo_getConvoForMembers([$profile->{did}])	or die("Err getConvoForMembers: $self->{err}");
-		
-		my $option = {collection => $collection};
-		$createAt or ($option->{createAt} = $createAt);
-		my $record = $self->makeRecord($msg, $option)						or die("Err makeRecord: $self->{err}");
+		$atProto->getAccessToken()												or die("Err getAccessToken: $atProto->{err}");#start exclusive control
+		my $did = $atProto->resolveHandle($handle)								or die("Cannot resolveHandle: $handle");
+		my $convo = $atProto->convo_getConvoAvailability($did) 					or die("Cannot get convo0: $did");
+		unless(defined($convo->{convo}{id})){
+			die('Cannot get convo1: '.encode_json($convo))
+		}
+		$option->{collection} = 'chat.bsky.convo.defs#messageView';
+		$option->{forDM} = 1;
+		my $record = $atProto->makeRecord($msg, $option)						or die("Err makeRecord: $atProto->{err}");
 		#my $jsont = encode_json($record);
 		#print "Record:\n$jsont\n\n";
-		$ret = $self->convo_sendMessage($convo->{convo}{id}, $record)		or die("Err sendMesssage: $self->{err}");
-		$self->releaseAccessToken()											or die("Err releaseAccessToken: $self->{err}");#finish exclusive control
+		$ret = $atProto->convo_sendMessage($convo->{convo}{id}, $record)		or die("Err sendMesssage: $atProto->{err}");
+		$atProto->releaseAccessToken()											or die("Err releaseAccessToken: $atProto->{err}");#finish exclusive control
 	};
 	if($@){
 		chomp $@;
-		$self->{err} = $@;
-		$self->releaseAccessToken();
+		$atProto->{err} = $@;
+		$atProto->releaseAccessToken();
 		$ret = undef;
 	}
 	return $ret;
