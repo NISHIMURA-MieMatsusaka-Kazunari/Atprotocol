@@ -781,8 +781,8 @@ sub sendMessage {
 	my $ret					= undef;
 	eval{
 		$atProto->getAccessToken()										or die("Err getAccessToken: $atProto->{err}");#start exclusive control
-		if($handle =~ /^\@(.+)$/){
-			my $did = $atProto->resolveHandle($1)						or die("Cannot resolveHandle: $handle");
+		if($handleOrConvoId =~ /^\@(.+)$/){
+			my $did = $atProto->resolveHandle($1)						or die("Cannot resolveHandle: $handleOrConvoId");
 			my $convo = $atProto->convo_getConvoAvailability($did) 		or die("Cannot get convo0: $did");
 			if(defined($convo->{convo}{id})){
 				$convoId = $convo->{convo}{id};
