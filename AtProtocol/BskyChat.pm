@@ -11,7 +11,7 @@ use JSON;
 
 use constant {
 	##UserAgent
-	USERAGENT	=> 'AtProtocol::Chat',
+	USERAGENT	=> 'AtProtocol::BskyChat',
 	##at protocol
 	PDS_URI_A	=> 'https://bsky.social',
 	CHAT_URI	=> 'https://api.bsky.chat',
@@ -670,7 +670,8 @@ sub convo_sendMessageBatch {
 		$ret = undef;
 	}
 	return $ret;
-}# chat.bsky.convo.sendMessage
+}
+# chat.bsky.convo.sendMessage
 sub convo_sendMessage {
 	my $atProto		= shift;
 	my $convoId		= shift;
@@ -686,7 +687,6 @@ sub convo_sendMessage {
 		$atProto->{serviceEndpoint}.'/xrpc/chat.bsky.convo.sendMessage',
 		[
 		'Authorization' => 'Bearer '.$accessJwt, 
-		#'Authorization' => 'Bearer eyJ0eXAiOiJhdCtqd3QiLCJhbGciOiJFUzI1NksifQ.eyJzY29wZSI6ImNvbS5hdHByb3RvLmFjY2VzcyIsInN1YiI6ImRpZDpwbGM6Z3Zremp1d2tkZjZhMnp0amNmc292bjY1IiwiaWF0IjoxNzQ5MzA3NzQ0LCJleHAiOjE3NDkzMTQ5NDQsImF1ZCI6ImRpZDp3ZWI6c2NhcmxldGluYS51cy1lYXN0Lmhvc3QuYnNreS5uZXR3b3JrIn0.nywa_h-TYgx-nxfjLaOJGwoi2D_-HeFO8cI9ygtirW7rMa4AgatuczGsYGha37vT6p-WX9n-wpOLF77hlf5Q7w',
 		'atproto-proxy' => CHAT_PROXY,
 		'atproto-accept-labelers' => $atProto->{acceptLabelers},
 		'Accept' => '*/*',
@@ -764,34 +764,39 @@ sub convo_updateRead {
 	return $ret;
 }
 
-
 # send message by chat
 # exclusive control. multi-process safe
+# For handles, the first @ must be added.
 # return hash(createRecord)
 sub sendMessage {
-	my $atProto		= shift;
-	my $handle		= shift;
-	my $msg 		= shift;
-	my $option		= shift;
+	my $atProto				= shift;
+	my $handleOrConvoId		= shift;
+	my $msg 				= shift;
+	my $option				= shift;
 	unless(defined($option->{collection})){
 		$option->{collection} = $atProto->{chatType};
 	}
 	$option->{forDM}		= 1;
-	my $ret		= undef;
+	my $convoId				= '';
+	my $ret					= undef;
 	eval{
-		$atProto->getAccessToken()												or die("Err getAccessToken: $atProto->{err}");#start exclusive control
-		my $did = $atProto->resolveHandle($handle)								or die("Cannot resolveHandle: $handle");
-		my $convo = $atProto->convo_getConvoAvailability($did) 					or die("Cannot get convo0: $did");
-		unless(defined($convo->{convo}{id})){
-			die('Cannot get convo1: '.encode_json($convo))
+		$atProto->getAccessToken()										or die("Err getAccessToken: $atProto->{err}");#start exclusive control
+		my $did = $atProto->resolveHandle($handle)						or die("Cannot resolveHandle: $handle");
+		if($handle =~ /^\@/){
+			my $convo = $atProto->convo_getConvoAvailability($did) 		or die("Cannot get convo0: $did");
+			if(defined($convo->{convo}{id})){
+				$convoId = $convo->{convo}{id};
+			}else{
+				die('Cannot get convo1: '.encode_json($convo))
+			}
+		}else{
+			$convoId = $handleOrConvoId;
 		}
 		$option->{collection} = 'chat.bsky.convo.defs#messageView';
 		$option->{forDM} = 1;
-		my $record = $atProto->makeRecord($msg, $option)						or die("Err makeRecord: $atProto->{err}");
-		#my $jsont = encode_json($record);
-		#print "Record:\n$jsont\n\n";
-		$ret = $atProto->convo_sendMessage($convo->{convo}{id}, $record)		or die("Err sendMesssage: $atProto->{err}");
-		$atProto->releaseAccessToken()											or die("Err releaseAccessToken: $atProto->{err}");#finish exclusive control
+		my $record = $atProto->makeRecord($msg, $option)				or die("Err makeRecord: $atProto->{err}");
+		$ret = $atProto->convo_sendMessage($convoId, $record)			or die("Err sendMesssage: $atProto->{err}");
+		$atProto->releaseAccessToken()									or die("Err releaseAccessToken: $atProto->{err}");#finish exclusive control
 	};
 	if($@){
 		chomp $@;
@@ -801,6 +806,5 @@ sub sendMessage {
 	}
 	return $ret;
 }
-
 
 return 1;
