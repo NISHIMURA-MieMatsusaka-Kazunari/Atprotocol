@@ -34,11 +34,14 @@ sub new {
 	my $requestUri	= defined($option->{pdsUri})	? $option->{pdsUri}		: PDS_URI_A;
 	my $userAgent	= defined($option->{userAgent})	? $option->{userAgent}	: USERAGENT;
 	my $err = '';
-	if($identifier && $password && $directory){
-		my $self = {requestUri => $requestUri, identifier => $identifier, password => $password, directory => $directory, serviceEndpoint => $requestUri};
+	if($identifier && $password){
+		my $self = {requestUri => $requestUri, identifier => $identifier, password => $password, serviceEndpoint => $requestUri};
+		if($directory){
+			$self->{directory} = $directory;
+		}
 		return bless $self, $atProto;
 	}else{
-		@! = "Err not set Identifier or Password or directory.";
+		@! = "Err not set Identifier or Password.";
 		return undef;
 	}
 }
@@ -234,6 +237,9 @@ sub getAccessToken {
 	my $flock	= undef;
 	my $fh		= undef;
 	eval{
+		unless(defined($atProto->{directory})){
+			die('Not defined working directory.');
+		}
 		local $SIG{ALRM} = sub { die "timeout"; };							# set time out
 		alarm(60);
 		open($flock, '+<', $atProto->{directory}.FLOCK_FILE.$atProto->{identifier}.'.txt') or die('Cannot open '.$atProto->{directory}.FLOCK_FILE.$atProto->{identifier}.".txt: $!");
@@ -310,6 +316,9 @@ sub releaseAccessToken {
 	my $atProto = shift;
 	my $ret = undef;
 	eval{
+		unless(defined($atProto->{directory})){
+			die('Not defined working directory.');
+		}
 		my $flock = $atProto->{'flock'};
 		if($flock){
 			truncate($flock, 0);
@@ -335,6 +344,9 @@ sub deleteAccessToken {
 	my $ret = undef;
 	my $fh = undef;
 	eval{
+		unless(defined($atProto->{directory})){
+			die('Not defined working directory.');
+		}
 		$atProto->deleteSession() or die($atProto->{err});
 		my $a;
 		$a	= _filePrint($atProto->{directory}.ACCESS_TOKEN_FILE.$atProto->{identifier}.'.json',	'');
