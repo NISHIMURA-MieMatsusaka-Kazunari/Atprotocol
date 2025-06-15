@@ -33,7 +33,7 @@ sub new {
 	$option->{pdsUri}		= defined($option->{pdsUri})	? $option->{pdsUri}		: PDS_URI_A;
 	my $self;
 	eval{
-		if($identifier && $password && $directory){
+		if($identifier && $password){
 			$self = AtProtocol->new($identifier, $password, $directory, $option) or die($!);
 			$self->{postType}	= $postType;
 			$self->{embedType}	= $embedType;
@@ -604,12 +604,13 @@ sub post {
 	my $collection	= defined($option->{collection})	? $option->{collection}	: $atProto->{postType};
 	my $ret		= undef;
 	eval{
+		unless(defined($atProto->{directory})){
+			die('Not defined working directory.');
+		}
 		$atProto->getAccessToken()							or die("Err getAccessToken: $atProto->{err}");#start exclusive control
 		my $option = {collection => $collection};
 		$createAt or $option->{createAt} = $createAt;
 		my $record = $atProto->makeRecord($msg, $option)	or die("Err makeRecord: $atProto->{err}");
-		#my $jsont = encode_json($record);
-		#print "Record:\n$jsont\n\n";
 		$ret = $atProto->createRecord($record)				or die("Err createRecord: $atProto->{err}");
 		$atProto->releaseAccessToken()						or die("Err releaseAccessToken: $atProto->{err}");#finish exclusive control
 	};
@@ -629,10 +630,12 @@ sub follow {
 	my $atProto	= shift;
 	my $handle 	= shift;
 	my $option	= shift;
-	#my $createAt	= defined($option->{createAt})	? $option->{createAt}	: undef;
 	my $collection	= 'app.bsky.graph.follow';
 	my $ret		= undef;
 	eval{
+		unless(defined($atProto->{directory})){
+			die('Not defined working directory.');
+		}
 		$atProto->getAccessToken()							or die("Err getAccessToken: $atProto->{err}");#start exclusive control
 		my $option = {collection => $collection};
 		my ($sec,$min,$hour,$mday,$mon,$year,$wday,$stime) = gmtime(time());
