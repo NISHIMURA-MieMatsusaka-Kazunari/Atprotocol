@@ -15,7 +15,6 @@ use constant {
 	##at protocol
 	PDS_URI_A	=> 'https://bsky.social',
 	CHAT_URI	=> 'https://api.bsky.chat',
-	#PDS_URI_A	=> 'https://scarletina.us-east.host.bsky.network',
 	ACCEPT_LABELERS	=> 'did:plc:ar7c4by46qjdydhdevvrndac;redact, did:plc:vhgppeyjwgrr37vm4v6ggd5a;redact',
 	CHAT_PROXY	=> 'did:web:api.bsky.chat#bsky_chat',
 	CHAT_TYPE	=> 'chat.bsky.convo.defs#messageView',
@@ -37,7 +36,7 @@ sub new {
 	$option->{pdsUri}			= $option ? ($option->{pdsUri}				? $option->{pdsUri}			: PDS_URI_A) 			: PDS_URI_A;
 	my $self;
 	eval{
-		if($identifier && $password && $directory){
+		if($identifier && $password){
 			$self = AtProtocol::Repo->new($identifier, $password, $directory, $option) or die($!);
 			$self->{chatType}		= $chatType;
 			$self->{acceptLabelers}	= $acceptLabelers;
@@ -780,12 +779,19 @@ sub sendMessage {
 	my $convoId				= '';
 	my $ret					= undef;
 	eval{
+		unless(defined($atProto->{directory})){
+			die('Not defined working directory.');
+		}
 		$atProto->getAccessToken()										or die("Err getAccessToken: $atProto->{err}");#start exclusive control
 		if($handleOrConvoId =~ /^\@(.+)$/){
 			my $did = $atProto->resolveHandle($1)						or die("Cannot resolveHandle: $handleOrConvoId");
 			my $convo = $atProto->convo_getConvoAvailability($did) 		or die("Cannot get convo0: $did");
 			if(defined($convo->{convo}{id})){
-				$convoId = $convo->{convo}{id};
+				if(scalar(@{$convo->{convo}{members}}) == 2){
+					$convoId = $convo->{convo}{id};
+				}else{
+					die('Convo members not 2: '.scalar(@{$b->{convo}{members}}))
+				}
 			}else{
 				die('Cannot get convo1: '.encode_json($convo))
 			}
